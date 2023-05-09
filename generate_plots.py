@@ -447,14 +447,14 @@ if __name__ == "__main__":
     data = h5py.File(args.behavior_filepath, "r")
 
     # lick raster for all trials
-    # lick_raster = generate_lick_raster_all_trials(args.behavior_filepath)
+    lick_raster = generate_lick_raster_all_trials(args.behavior_filepath)
 
     # lick latency
     lick_latency = generate_lick_latency(args.behavior_filepath)
 
     # mean running speed for each block of trials
-    # run_speed_mean_block = generate_run_speed_mean_block(
-    #     args.behavior_filepath)
+    run_speed_mean_block = generate_run_speed_mean_block(
+        args.behavior_filepath)
 
     # frame intervals
     frame_intervals = generate_frame_intervals(args.behavior_filepath)
