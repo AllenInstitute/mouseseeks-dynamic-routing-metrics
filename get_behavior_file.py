@@ -1,5 +1,4 @@
 import re
-import glob
 import pathlib
 import np_session
 import np_config
@@ -24,19 +23,23 @@ def get_behavior_session_storage_dir(subject_id: str, foraging_id: str) -> pathl
         raise ValueError(
             f'Could not find behavior session for foraging_id {foraging_id} in LIMS')
 
-    hdf5s = list(np_config.normalize_path(mouse.lims.path / f'behavior_session_{behavior_sessions[0]["id"]}').glob("*.hdf5"))
+    hdf5s = list(np_config.normalize_path(mouse.lims.path /
+                 f'behavior_session_{behavior_sessions[0]["id"]}').glob("*.hdf5"))
 
-    behavior_filename_pattern = f"DynamicRouting1_{subject_id}" + "_\d{8}_\d+?\.hdf5"
+    behavior_filename_pattern = f"DynamicRouting1_{subject_id}" + \
+        "_\d{8}_\d+?\.hdf5"
     behavior_files = [
         path for path in hdf5s
         if re.match(behavior_filename_pattern, path.name) is not None
     ]
 
     if len(behavior_files) < 1:
-        raise Exception("No behavior files found from search pattern. pattern=%s" % behavior_filename_pattern)
+        raise Exception(
+            "No behavior files found from search pattern. pattern=%s" % behavior_filename_pattern)
 
     if len(behavior_files) > 2:
-        raise Exception("More than one hdf5 file detected. Only one should be present. This is a critical error.")
+        raise Exception(
+            "More than one hdf5 file detected. Only one should be present. This is a critical error.")
 
     return behavior_files[0]
 
