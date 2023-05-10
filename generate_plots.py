@@ -463,7 +463,7 @@ if __name__ == "__main__":
     quiescent_violations = generate_quiescent_violations(
         args.behavior_filepath)
 
-    # inter trial intervals
+    # quiescent inter-trial intervals
     inter_trial_intervals = generate_inter_trial_intervals(
         args.behavior_filepath)
 
