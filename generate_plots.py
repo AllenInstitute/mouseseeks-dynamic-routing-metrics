@@ -1,14 +1,10 @@
-import glob
 import os
 import re
-import time
 import h5py
 import numpy as np
-import pandas as pd
 import scipy.stats
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 
 
 matplotlib.rcParams['pdf.fonttype'] = 42
