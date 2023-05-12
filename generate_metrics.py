@@ -1,11 +1,77 @@
+import json
 import requests
 import datetime
-from typing import Iterable, Tuple, Union
+from typing import Dict, Iterable, Tuple, Union
 from bs4 import BeautifulSoup
 
 
+def query_mtrain_by_id(uri: str, _id: str) -> Dict:
+    """Attempts to query mtrain for an object with a specific id.
+    """
+    response = requests.get(
+        uri,
+        params={
+            # api requires queries to serialized json...:/
+            "q": json.dumps({
+                "filters": [
+                    {
+                        "name": "id",
+                        "val": _id,
+                        "op": "eq",
+                    }
+                ]
+            })
+        }
+    )
+    if response.status_code not in (200, ):
+        response.raise_for_status()
+
+    objects = response.json()["objects"]
+
+    if len(objects) < 1:
+        raise Exception("No objects returned from query.")
+
+    if len(objects) > 1:
+        raise Exception(
+            "More than one object returned from query, expected to only return one.")
+
+    return objects[0]
+
+
+def get_stage_name_from_session_id(api_base: str, session_id: str) -> str:
+    """Attempts to query mtrain for a "Stage" name from a "BehaviorSession" id.
+    """
+    session = query_mtrain_by_id(
+        f"{api_base}/api/v1/behavior_sessions",
+        session_id,
+    )
+
+    state = query_mtrain_by_id(
+        f"{api_base}/api/v1/states",
+        session["state_id"],
+    )
+
+    return query_mtrain_by_id(
+        f"{api_base}/api/v1/stages",
+        state["id"],
+    )["name"]
+
+
+def session_metrics_summary_to_training_summary(api_base: str, session_metrics: Dict) -> \
+        Tuple[datetime.datetime, str, str, Union[str, None], Union[str, None], Union[str, None]]:  # TODO: use typevar
+    return (
+        session_metrics["session_datetime"],
+        session_metrics["session_id"],
+        get_stage_name_from_session_id(
+            api_base, session_metrics["session_id"]),
+        session_metrics.get("hitCount"),
+        session_metrics.get("dprimeSameModal"),
+        session_metrics.get("dprimeOtherModalGo"),
+    )
+
+
 def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str) -> \
-        Iterable[Tuple[datetime.datetime, str, Union[str, None], Union[str, None], Union[str, None]]]:
+        Iterable[Tuple[datetime.datetime, str, str, Union[str, None], Union[str, None], Union[str, None]]]:  # TODO: use typevar
     """Gets a subject's mtrain training history up to and including `session_id`.
 
     Returns
@@ -13,6 +79,7 @@ def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str)
     iterable of training history, each tuple represents:
         - session datetime
         - session_id
+        - stage_name
         - hitCount or None
         - dprimeSameModal or None
         - dprimeOtherModalGo or None
@@ -75,30 +142,28 @@ def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str)
         session_metrics_map[_session_id][metric_name] = item[5].lstrip(
             "[").rstrip("]")  # metric value, remove brackets
 
-    # convert to tuples
-    all_training_history = map(
-        lambda session_metrics: (
-            session_metrics["session_datetime"],
-            session_metrics["session_id"],
-            session_metrics.get("hitCount"),
-            session_metrics.get("dprimeSameModal"),
-            session_metrics.get("dprimeOtherModalGo"),
-        ),
-        session_metrics_map.values(),
-    )
-
     # sort datetime asc
-    sorted_all_training_history = sorted(
-        all_training_history,
-        key=lambda item: item[0],
+    sorted_session_metrics = sorted(
+        session_metrics_map.values(),
+        key=lambda item: item["session_datetime"],
     )
 
     filtered_training_history = []
-    for session_summary in sorted_all_training_history:
-        if session_summary[1] == session_id:
-            filtered_training_history.append(session_summary)
-            break  # break after including target session_id
-        filtered_training_history.append(session_summary)
+    for session_summary in sorted_session_metrics:
+        if session_summary["session_id"] == session_id:
+            filtered_training_history.append(
+                session_metrics_summary_to_training_summary(
+                    api_base,
+                    session_summary,
+                )
+            )
+            break  # stop after including session with target session_id
+        filtered_training_history.append(
+            session_metrics_summary_to_training_summary(
+                api_base,
+                session_summary,
+            )
+        )
     else:
         raise Exception(
             "Session id not present in returned table. session_id=%s" % session_id)
@@ -123,3 +188,15 @@ if __name__ == "__main__":
 
     assert training_history[-1][1] == args.session_id, \
         f"Last session in training history should have target session id: {args.session_id}"
+
+    def generate_html(training_history):
+        header = "<tr><th>Session datetime</th><th>Session id</th><th>Stage name</th><th>hitCount</th><th>dprimeSameModal</th><th>dprimeOtherModalGo</th></tr>"
+        rows = [
+            f"<tr><td>{summary[0].isoformat()}</td><td>{summary[1]}</td><td>{summary[2]}</td><td>{summary[3]}</td><td>{summary[4]}</td><td>{summary[5]}</td></tr>"
+            for summary in training_history
+        ]
+        table = f"<table>\n{header}\n\n{''.join(rows)}\n</table>"
+        return f"<html>\n{table}\n</html>"
+
+    with open("table_example.html", "w") as f:
+        f.write(generate_html(training_history))
