@@ -58,9 +58,9 @@ def get_stage_name_from_session_id(api_base: str, session_id: str) -> str:
 
 
 def session_metrics_summary_to_training_summary(api_base: str, session_metrics: Dict) -> \
-        Tuple[datetime.datetime, str, Union[str, None], Union[str, None], Union[str, None]]:  # TODO: use typevar
+        Tuple[str, str, Union[str, None], Union[str, None], Union[str, None]]:  # TODO: use typevar
     return (
-        session_metrics["session_datetime"],
+        session_metrics["session_datetime"].strftime("%m-%d-%y"),
         get_stage_name_from_session_id(
             api_base, session_metrics["session_id"]),
         session_metrics.get("hitCount"),
@@ -70,13 +70,13 @@ def session_metrics_summary_to_training_summary(api_base: str, session_metrics: 
 
 
 def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str) -> \
-        Iterable[Tuple[datetime.datetime, str, Union[str, None], Union[str, None], Union[str, None]]]:  # TODO: use typevar
+        Iterable[Tuple[str, str, Union[str, None], Union[str, None], Union[str, None]]]:  # TODO: use typevar
     """Gets a subject's mtrain training history up to and including `session_id`.
 
     Returns
     -------
     iterable of training history, each tuple represents:
-        - session datetime
+        - session date (represented as a string in format: month-day-year)
         - stage_name
         - hitCount or None
         - dprimeSameModal or None
@@ -187,7 +187,7 @@ if __name__ == "__main__":
     def generate_html(training_history):
         header = "<tr><th>Session datetime</th><th>Stage name</th><th>hitCount</th><th>dprimeSameModal</th><th>dprimeOtherModalGo</th></tr>"
         rows = [
-            f"<tr><td>{summary[0].isoformat()}</td><td>{summary[1]}</td><td>{summary[2]}</td><td>{summary[3]}</td><td>{summary[4]}</td></tr>"
+            f"<tr><td>{summary[0]}</td><td>{summary[1]}</td><td>{summary[2]}</td><td>{summary[3]}</td><td>{summary[4]}</td></tr>"
             for summary in training_history
         ]
         table = f"<table>\n{header}\n\n{''.join(rows)}\n</table>"
