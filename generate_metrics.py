@@ -169,6 +169,41 @@ def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str)
     return filtered_training_history
 
 
+def generate_metric_view(metric_str: str) -> str:
+    pass
+
+
+html_body = """
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+</head>
+<body>
+{}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+
+</body>
+
+</html>
+"""
+
+
+def generate_mtrain_table_html(api_base: str, subject_id: str, session_id: str) -> str:
+    filtered_training_history = get_mtrain_training_history(api_base, subject_id, session_id)
+
+    table_header = ""
+    rows = []
+    table = f"<table>\n{table_header}\n\n{''.join(rows)}\n</table>"
+    return html_body.format(table)
+
 if __name__ == "__main__":
     import argparse
 
@@ -194,4 +229,4 @@ if __name__ == "__main__":
         return f"<html>\n{table}\n</html>"
 
     with open("table_example.html", "w") as f:
-        f.write(generate_html(training_history))
+        f.write(generate_mtrain_table_html(training_history))
