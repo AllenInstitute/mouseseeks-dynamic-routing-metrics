@@ -1,6 +1,8 @@
+import ast
 import json
 import requests
 import datetime
+import itertools
 from typing import Dict, Iterable, Tuple, Union
 from bs4 import BeautifulSoup
 
@@ -57,20 +59,47 @@ def get_stage_name_from_session_id(api_base: str, session_id: str) -> str:
     )["name"]
 
 
+TrainingHistoryEntry = Tuple[str, str, tuple[list, list, list, list]]
 def session_metrics_summary_to_training_summary(api_base: str, session_metrics: Dict) -> \
-        Tuple[str, str, Union[str, None], Union[str, None], Union[str, None]]:  # TODO: use typevar
-    return (
-        session_metrics["session_datetime"].strftime("%m-%d-%y"),
-        get_stage_name_from_session_id(
-            api_base, session_metrics["session_id"]),
-        session_metrics.get("hitCount"),
-        session_metrics.get("dprimeSameModal"),
-        session_metrics.get("dprimeOtherModalGo"),
+        TrainingHistoryEntry:
+    stage_name = get_stage_name_from_session_id(
+            api_base, 
+            session_metrics["session_id"],
+    )
+    metric_names = (
+    "hitCount",
+    "dprimeSameModal",
+    "dprimeOtherModalGo",
+)
+    metrics = []
+    empty_defult = (None, )  # if metric doesnt exist default to this
+    for metric_name in metric_names:
+        raw = session_metrics.get(metric_name)
+        if raw is None:
+            metrics.append(empty_defult)
+        else:
+            resolved = ast.literal_eval(raw)
+            if isinstance(resolved, tuple):
+                metrics.append(resolved)
+            else:
+                metrics.append((resolved, ))
+
+    block_wise_session_metrics = (
+        [block_index, *block_wise_metrics]
+        for block_index, block_wise_metrics in 
+        enumerate(itertools.zip_longest(*metrics, fillvalue=None))
     )
 
+    return (
+        session_metrics["session_datetime"].strftime("%m-%d-%y"),
+        stage_name,
+        tuple(block_wise_session_metrics),  # generator to tuple
+    )
 
+# TrainingHistoryEntry = Tuple[str, str, Union[str, None], Union[str, None], Union[str, None]]
+# TrainingHistoryEntry = Tuple[str, str, tuple[list, list, list, list]]
 def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str) -> \
-        Iterable[Tuple[str, str, Union[str, None], Union[str, None], Union[str, None]]]:  # TODO: use typevar
+        Iterable[TrainingHistoryEntry]:  # TODO: use typevar
     """Gets a subject's mtrain training history up to and including `session_id`.
 
     Returns
@@ -78,9 +107,9 @@ def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str)
     iterable of training history, each tuple represents:
         - session date (represented as a string in format: month-day-year)
         - stage_name
-        - hitCount or None
-        - dprimeSameModal or None
-        - dprimeOtherModalGo or None
+        - hitCount
+        - dprimeSameModal
+        - dprimeOtherModalGo
 
     Notes
     -----
@@ -169,9 +198,30 @@ def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str)
     return filtered_training_history
 
 
-def generate_metric_view(metric_str: str) -> str:
-    pass
+def parse_metric_str(metric_str: str):
+    return eval(metric_str)
 
+
+metric_names = [
+    "Hit count",
+    "Dprime same modal",
+    "Dprime other modal go",
+]
+def generate_metrics_view(entry: TrainingHistoryEntry) -> str:
+    table_header = f"<tr><th>Block Index</th>{''.join(map(lambda metric_name: f'<th>{metric_name}</th>', metric_names))}</tr>"
+    row_elements = []
+    for block_values in entry[2]:
+        row_elements.append(
+            list(map(
+                lambda value: f"<td>{value or '-'}</td>",  # replace None with '-' for visual appeal? 
+                [*block_values],
+            ))
+        )
+    rows_html = "\n".join(map(
+        lambda row: f"<tr>{''.join(row)}</tr>",
+        row_elements,  # block by block session metric values
+    ))
+    return f'<table class="table mb-0 table-striped">\n<thead>{table_header}</thead>\n\n<tbody>{rows_html}</tbody>\n</table>'
 
 html_body = """
 <!doctype html>
@@ -197,11 +247,14 @@ html_body = """
 
 
 def generate_mtrain_table_html(api_base: str, subject_id: str, session_id: str) -> str:
-    filtered_training_history = get_mtrain_training_history(api_base, subject_id, session_id)
+    training_history = get_mtrain_training_history(api_base, subject_id, session_id)
 
-    table_header = ""
-    rows = []
-    table = f"<table>\n{table_header}\n\n{''.join(rows)}\n</table>"
+    table_header = f"<tr><th>Session datetime</th><th>Stage name</th><th>Session Metrics</th></tr>"
+    rows = [
+            f'<tr><td>{training_history_entry[0]}</td><td>{training_history_entry[1]}</td><td colspan="4">{generate_metrics_view(training_history_entry)}</td></tr>'
+            for training_history_entry in training_history
+        ]
+    table = f'<table class="table table-striped">\n{table_header}\n\n{"".join(rows)}\n</table>'
     return html_body.format(table)
 
 if __name__ == "__main__":
@@ -219,14 +272,6 @@ if __name__ == "__main__":
 
     print(training_history)
 
-    def generate_html(training_history):
-        header = "<tr><th>Session datetime</th><th>Stage name</th><th>hitCount</th><th>dprimeSameModal</th><th>dprimeOtherModalGo</th></tr>"
-        rows = [
-            f"<tr><td>{summary[0]}</td><td>{summary[1]}</td><td>{summary[2]}</td><td>{summary[3]}</td><td>{summary[4]}</td></tr>"
-            for summary in training_history
-        ]
-        table = f"<table>\n{header}\n\n{''.join(rows)}\n</table>"
-        return f"<html>\n{table}\n</html>"
-
     with open("table_example.html", "w") as f:
-        f.write(generate_mtrain_table_html(training_history))
+        f.write(generate_mtrain_table_html(
+            args.api_base, args.subject_id, args.session_id))
