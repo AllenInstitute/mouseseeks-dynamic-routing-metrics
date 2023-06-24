@@ -3,7 +3,7 @@ import json
 import requests
 import datetime
 import itertools
-from typing import Dict, Iterable, Tuple, Union
+from typing import Dict, Iterable, Tuple, Any
 from bs4 import BeautifulSoup
 
 
@@ -202,18 +202,27 @@ def parse_metric_str(metric_str: str):
     return eval(metric_str)
 
 
+def generate_block_value_view(value: Any):
+    # if value is None:
+    #     return '<td width="25%">-</td>'
+    if isinstance(value, float):
+        # return up to two decimal places
+        return f'<td width="25%">{value: .2f}</td>'
+    else:
+        return f'<td width="25%">{value}</td>'
+
+
 metric_names = [
     "Hit count",
     "Dprime same modal",
     "Dprime other modal go",
 ]
-def generate_metrics_view(entry: TrainingHistoryEntry) -> str:
-    table_header = f"<tr><th>Block Index</th>{''.join(map(lambda metric_name: f'<th>{metric_name}</th>', metric_names))}</tr>"
+def generate_metrics_view(entry: TrainingHistoryEntry, hide_header = False) -> str:
     row_elements = []
     for block_values in entry[2]:
         row_elements.append(
             list(map(
-                lambda value: f"<td>{value or '-'}</td>",  # replace None with '-' for visual appeal? 
+                lambda value: generate_block_value_view(value),  # replace None with '-' for visual appeal? 
                 [*block_values],
             ))
         )
@@ -221,7 +230,19 @@ def generate_metrics_view(entry: TrainingHistoryEntry) -> str:
         lambda row: f"<tr>{''.join(row)}</tr>",
         row_elements,  # block by block session metric values
     ))
-    return f'<table class="table mb-0 table-striped">\n<thead>{table_header}</thead>\n\n<tbody>{rows_html}</tbody>\n</table>'
+    table_headers = ''.join(map(lambda metric_name: f'<th width="25%">{metric_name}</th>', metric_names))
+    table_header_row = f'<tr><th width="25%">Block Index</th>{table_headers}</tr>'
+    if hide_header:
+        table_header_class = '<thead class="opacity-0 h-0">'
+    else:
+        table_header_class = "<thead>"
+
+    if hide_header:
+        table_html = f"<thead></thead>\n<tbody>{rows_html}</tbody>\n"
+    else:
+        table_html = f"{table_header_class}{table_header_row}</thead>\n<tbody>{rows_html}</tbody>\n"
+    
+    return f'<div class="table-responsive"><table class="table mb-0 table-striped">\n{table_html}</tbody>\n</table></div>'
 
 html_body = """
 <!doctype html>
@@ -248,11 +269,12 @@ html_body = """
 
 def generate_mtrain_table_html(api_base: str, subject_id: str, session_id: str) -> str:
     training_history = get_mtrain_training_history(api_base, subject_id, session_id)
+    training_history.reverse()  # corbett wants datetime descending?
 
     table_header = f"<tr><th>Session datetime</th><th>Stage name</th><th>Session Metrics</th></tr>"
     rows = [
-            f'<tr><td>{training_history_entry[0]}</td><td>{training_history_entry[1]}</td><td colspan="4">{generate_metrics_view(training_history_entry)}</td></tr>'
-            for training_history_entry in training_history
+            f'<tr><td>{training_history_entry[0]}</td><td>{training_history_entry[1]}</td><td colspan="0">{generate_metrics_view(training_history_entry, index != 0)}</td></tr>'
+            for index, training_history_entry in enumerate(training_history)
         ]
     table = f'<table class="table table-striped">\n{table_header}\n\n{"".join(rows)}\n</table>'
     return html_body.format(table)
