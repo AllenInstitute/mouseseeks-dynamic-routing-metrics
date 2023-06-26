@@ -67,10 +67,10 @@ def session_metrics_summary_to_training_summary(api_base: str, session_metrics: 
             session_metrics["session_id"],
     )
     metric_names = (
-    "hitCount",
-    "dprimeSameModal",
-    "dprimeOtherModalGo",
-)
+        "hitCount",
+        "dprimeSameModal",
+        "dprimeOtherModalGo",
+    )
     metrics = []
     empty_defult = (None, )  # if metric doesnt exist default to this
     for metric_name in metric_names:
@@ -96,8 +96,7 @@ def session_metrics_summary_to_training_summary(api_base: str, session_metrics: 
         tuple(block_wise_session_metrics),  # generator to tuple
     )
 
-# TrainingHistoryEntry = Tuple[str, str, Union[str, None], Union[str, None], Union[str, None]]
-# TrainingHistoryEntry = Tuple[str, str, tuple[list, list, list, list]]
+
 def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str) -> \
         Iterable[TrainingHistoryEntry]:  # TODO: use typevar
     """Gets a subject's mtrain training history up to and including `session_id`.
@@ -198,8 +197,8 @@ def get_mtrain_training_history(api_base: str, subject_id: str, session_id: str)
     return filtered_training_history
 
 
-def parse_metric_str(metric_str: str):
-    return eval(metric_str)
+def generate_element(value, class_names: Iterable, attributes: Iterable) -> str:
+    pass
 
 
 def generate_block_value_view(value: Any):
@@ -244,43 +243,23 @@ def generate_metrics_view(entry: TrainingHistoryEntry, hide_header = False) -> s
     
     return f'<div class="table-responsive"><table class="table mb-0 table-striped">\n{table_html}</tbody>\n</table></div>'
 
-html_body = """
-<!doctype html>
-<html lang="en">
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bootstrap demo</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-</head>
-<body>
-{}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
-        crossorigin="anonymous"></script>
-
-</body>
-
-</html>
-"""
-
-
-def generate_mtrain_table_html(api_base: str, subject_id: str, session_id: str) -> str:
+def generate_mtrain_table(api_base: str, subject_id: str, session_id: str) -> str:
     training_history = get_mtrain_training_history(api_base, subject_id, session_id)
     training_history.reverse()  # corbett wants datetime descending?
 
     table_header = f"<tr><th>Session datetime</th><th>Stage name</th><th>Session Metrics</th></tr>"
     rows = [
-            f'<tr><td>{training_history_entry[0]}</td><td>{training_history_entry[1]}</td><td colspan="0">{generate_metrics_view(training_history_entry, index != 0)}</td></tr>'
-            for index, training_history_entry in enumerate(training_history)
-        ]
+        f'<tr><td>{training_history_entry[0]}</td><td>{training_history_entry[1]}</td><td colspan="0">{generate_metrics_view(training_history_entry, index != 0)}</td></tr>'
+        for index, training_history_entry in enumerate(training_history)
+    ]
     table = f'<table class="table table-striped">\n{table_header}\n\n{"".join(rows)}\n</table>'
-    return html_body.format(table)
+    return table
 
 if __name__ == "__main__":
     import argparse
+    import pathlib
+    import hashlib
 
     parser = argparse.ArgumentParser()
     parser.add_argument("api_base", type=str)
@@ -292,8 +271,42 @@ if __name__ == "__main__":
     training_history = get_mtrain_training_history(
         args.api_base, args.subject_id, args.session_id)
 
-    print(training_history)
+    html_body = """
+    <!doctype html>
+    <html lang="en">
 
-    with open("table_example.html", "w") as f:
-        f.write(generate_mtrain_table_html(
-            args.api_base, args.subject_id, args.session_id))
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Bootstrap demo</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+            integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    </head>
+    <body>
+    {}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+            crossorigin="anonymous"></script>
+
+    </body>
+
+    </html>
+    """
+    table_path = pathlib.Path("table_example_2.html")
+    table_path.write_text(
+        html_body.format(
+            generate_mtrain_table(
+                args.api_base,
+                args.subject_id,
+                args.session_id,
+            )
+        )
+    )
+
+    # def compute_checksum(path: pathlib.Path):
+    #     assert path.exists(), "Path doesnt exist: %s" % path.as_posix()
+    #     contents = path.read_text().strip("\n").strip("\t")
+    #     return hashlib.md5(contents.encode("utf8")).hexdigest()
+
+    # old_table = pathlib.Path("table_example.html")
+    # assert compute_checksum(old_table) == compute_checksum(table_path), "Content of old and new tables should match."
