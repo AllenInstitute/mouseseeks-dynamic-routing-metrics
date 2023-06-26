@@ -231,15 +231,11 @@ def generate_metrics_view(entry: TrainingHistoryEntry, hide_header = False) -> s
     ))
     table_headers = ''.join(map(lambda metric_name: f'<th width="25%">{metric_name}</th>', metric_names))
     table_header_row = f'<tr><th width="25%">Block Index</th>{table_headers}</tr>'
-    if hide_header:
-        table_header_class = '<thead class="opacity-0 h-0">'
-    else:
-        table_header_class = "<thead>"
 
     if hide_header:
         table_html = f"<thead></thead>\n<tbody>{rows_html}</tbody>\n"
     else:
-        table_html = f"{table_header_class}{table_header_row}</thead>\n<tbody>{rows_html}</tbody>\n"
+        table_html = f"<thead>{table_header_row}</thead>\n<tbody>{rows_html}</tbody>\n"
     
     return f'<div class="table-responsive"><table class="table mb-0 table-striped">\n{table_html}</tbody>\n</table></div>'
 
@@ -259,7 +255,7 @@ def generate_mtrain_table(api_base: str, subject_id: str, session_id: str) -> st
 if __name__ == "__main__":
     import argparse
     import pathlib
-    import hashlib
+    # import hashlib
 
     parser = argparse.ArgumentParser()
     parser.add_argument("api_base", type=str)
