@@ -55,7 +55,7 @@ def get_stage_name_from_session_id(api_base: str, session_id: str) -> str:
 
     return query_mtrain_by_id(
         f"{api_base}/api/v1/stages",
-        state["id"],
+        state["stage_id"],
     )["name"]
 
 
