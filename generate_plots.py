@@ -415,7 +415,6 @@ def generate_inter_trial_intervals(behavior_filepath: str):
 def generate_running_speed(behavior_filepath: str):
     obj = DynRoutData()
     obj.loadBehavData(behavior_filepath)
-
     if obj.runningSpeed is None:
         return
 
@@ -428,6 +427,38 @@ def generate_running_speed(behavior_filepath: str):
     ax.set_xlim([0, obj.frameTimes[-1]])
     ax.set_xlabel('time (s)')
     ax.set_ylabel('running speed (cm/s)')
+    plt.tight_layout()
+    return fig
+
+
+def generate_cumulative_volume(behavior_filepath: str):
+    obj = DynRoutData()
+    obj.loadBehavData(behavior_filepath)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    print("bur")
+    print(np.cumsum(obj.rewardSize))
+    # stimLabels = np.unique(obj.trialStim)
+    
+    # for i, st in enumerate(obj.stimStartTimes):
+
+
+
+    # for stim, clr in zip(stimLabels, clrs):
+    #     trials = (obj.trialStim == stim) & obj.trialResponse
+    #     rt = obj.responseTimes[trials]
+    #     rtSort = np.sort(rt)
+    #     cumProb = [np.sum(rt <= i)/rt.size for i in rtSort]
+    #     ax.plot(rtSort, cumProb, color=clr, label=stim)
+    # for side in ('right', 'top'):
+    #     ax.spines[side].set_visible(False)
+    ax.tick_params(direction='out', top=False, right=False)
+    ax.set_xlim([0, obj.responseWindowTime[1]+0.1])
+    ax.set_ylim([0, 1.02])
+    ax.set_xlabel('response time (s)')
+    ax.set_ylabel('cumulative probability')
+    ax.legend()
     plt.tight_layout()
     return fig
 
@@ -465,5 +496,8 @@ if __name__ == "__main__":
 
     # running speed
     running_speed = generate_running_speed(args.behavior_filepath)
+
+    # cumulative volume
+    cumulative_volume = generate_cumulative_volume(args.behavior_filepath)
 
     plt.show(block=True)
