@@ -434,7 +434,7 @@ def generate_running_speed_binned(behavior_filepath: str, bin_size = 6):
     binned_running_speed = []
     for i in range(0, obj.frameTimes.size, bin_size):
         binned_frame_times.append(obj.frameTimes[i])
-        binned_running_speed.append(obj.runningSpeed[i:bin_size].mean())
+        binned_running_speed.append(obj.runningSpeed[i:bin_size].nanmean())
     
     print(binned_frame_times)
     print(binned_running_speed)
