@@ -422,7 +422,7 @@ def generate_running_speed(behavior_filepath: str):
     return fig
 
 
-def generate_running_speed_binned(behavior_filepath: str, bin_size = 20):
+def generate_running_speed_binned(behavior_filepath: str, bin_size = 40):
     obj = DynRoutData()
     obj.loadBehavData(behavior_filepath)
     if obj.runningSpeed is None:
