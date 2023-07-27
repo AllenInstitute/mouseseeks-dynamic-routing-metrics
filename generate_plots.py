@@ -444,11 +444,12 @@ def generate_cumulative_volume(behavior_filepath: str):
     #     ax.plot(rtSort, cumProb, color=clr, label=stim)
     # for side in ('right', 'top'):
     #     ax.spines[side].set_visible(False)
+    ax.plot(np.arange(obj.nTrials), np.cumsum(obj.rewardSize))
     ax.tick_params(direction='out', top=False, right=False)
-    ax.set_xlim([0, obj.responseWindowTime[1]+0.1])
-    ax.set_ylim([0, 1.02])
-    ax.set_xlabel('response time (s)')
-    ax.set_ylabel('cumulative probability')
+    # ax.set_xlim([0, obj.responseWindowTime[1]+0.1])
+    ax.set_ylim([0, 5.0])
+    ax.set_xlabel('trials')
+    ax.set_ylabel('cumulative volume (mL)')
     ax.legend()
     plt.tight_layout()
     return fig
