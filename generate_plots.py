@@ -428,25 +428,17 @@ def generate_cumulative_volume(behavior_filepath: str):
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    print("bur")
-    print(np.cumsum(obj.rewardSize))
-    # stimLabels = np.unique(obj.trialStim)
+    trials = np.arange(obj.nTrials)
+    cum_vol = np.cumsum(obj.rewardSize)
+    cum_vol_inter_trial = []
+    prev_cum_vol = 0
+    for trial in trials:
+        if obj.trialRewarded[trial]:
+            prev_cum_vol = cum_vol.pop(0)
+        cum_vol_inter_trial.append(prev_cum_vol)
     
-    # for i, st in enumerate(obj.stimStartTimes):
-
-
-
-    # for stim, clr in zip(stimLabels, clrs):
-    #     trials = (obj.trialStim == stim) & obj.trialResponse
-    #     rt = obj.responseTimes[trials]
-    #     rtSort = np.sort(rt)
-    #     cumProb = [np.sum(rt <= i)/rt.size for i in rtSort]
-    #     ax.plot(rtSort, cumProb, color=clr, label=stim)
-    # for side in ('right', 'top'):
-    #     ax.spines[side].set_visible(False)
-    ax.plot(np.arange(obj.nTrials), np.cumsum(obj.rewardSize))
+    ax.plot(trials, cum_vol_inter_trial)
     ax.tick_params(direction='out', top=False, right=False)
-    # ax.set_xlim([0, obj.responseWindowTime[1]+0.1])
     ax.set_ylim([0, 5.0])
     ax.set_xlabel('trials')
     ax.set_ylabel('cumulative volume (mL)')
