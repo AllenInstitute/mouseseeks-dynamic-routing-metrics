@@ -422,7 +422,7 @@ def generate_running_speed(behavior_filepath: str):
     return fig
 
 
-def generate_running_speed_binned(behavior_filepath: str, bin_size = 6):
+def generate_running_speed_binned(behavior_filepath: str, bin_size = 20):
     obj = DynRoutData()
     obj.loadBehavData(behavior_filepath)
     if obj.runningSpeed is None:
@@ -438,8 +438,8 @@ def generate_running_speed_binned(behavior_filepath: str, bin_size = 6):
             np.nanmean(obj.runningSpeed[i:i+bin_size])
         )
     
-    print(binned_frame_times)
-    print(binned_running_speed)
+    # print(binned_frame_times)
+    # print(binned_running_speed)
     ax.plot(binned_frame_times, binned_running_speed, 'k')
     for side in ('right', 'top'):
         ax.spines[side].set_visible(False)
