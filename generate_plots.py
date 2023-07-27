@@ -422,7 +422,59 @@ def generate_running_speed(behavior_filepath: str):
     return fig
 
 
+def generate_running_speed_binned(behavior_filepath: str, bin_size = 6):
+    obj = DynRoutData()
+    obj.loadBehavData(behavior_filepath)
+    if obj.runningSpeed is None:
+        return
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    binned_frame_times = []
+    binned_running_speed = []
+    for i in range(0, obj.frameTimes.size, bin_size):
+        binned_frame_times.append(obj.frameTimes[i])
+        binned_running_speed.append(obj.runningSpeed[i:bin_size].mean())
+    # binned_frame_times = np.arange(0, obj.frameTimes[-1], 1)
+    # binned_running_speed = np.zeros(binned_frame_times.size)
+
+    ax.plot(binned_frame_times, binned_running_speed, 'k')
+    for side in ('right', 'top'):
+        ax.spines[side].set_visible(False)
+    ax.tick_params(direction='out', top=False, right=False)
+    ax.set_xlim([0, obj.frameTimes[-1]])
+    ax.set_xlabel('time (s)')
+    ax.set_ylabel('running speed (cm/s)')
+    plt.tight_layout()
+    return fig
+
+
 def generate_cumulative_volume(behavior_filepath: str):
+    obj = DynRoutData()
+    obj.loadBehavData(behavior_filepath)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    trials = np.arange(obj.nTrials)
+    cum_vol = list(np.cumsum(obj.rewardSize))
+    cum_vol_inter_trial = []
+    prev_cum_vol = 0
+    for trial in trials:
+        if obj.trialRewarded[trial]:
+            prev_cum_vol = cum_vol.pop(0)
+        cum_vol_inter_trial.append(prev_cum_vol)
+    
+    ax.plot(trials, cum_vol_inter_trial)
+    ax.tick_params(direction='out', top=False, right=False)
+    ax.set_ylim([0, 5.0])
+    ax.set_xlabel('trials')
+    ax.set_ylabel('cumulative volume (mL)')
+    ax.legend()
+    plt.tight_layout()
+    return fig
+
+
+def generate_cumulative_volume_2(behavior_filepath: str):
     obj = DynRoutData()
     obj.loadBehavData(behavior_filepath)
 
@@ -481,7 +533,13 @@ if __name__ == "__main__":
     # running speed
     running_speed = generate_running_speed(args.behavior_filepath)
 
+    # running speed binned
+    running_speed = generate_running_speed_binned(args.behavior_filepath)
+
     # cumulative volume
     cumulative_volume = generate_cumulative_volume(args.behavior_filepath)
+
+    # cumulative volume v2
+    cumulative_volume = generate_cumulative_volume_2(args.behavior_filepath)
 
     plt.show(block=True)
