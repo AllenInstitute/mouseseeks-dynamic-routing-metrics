@@ -26,28 +26,28 @@ def calcDprime(hitRate, falseAlarmRate, goTrials, nogoTrials):
 
 
 class DynRoutData():
-
+    
     def __init__(self):
         self.frameRate = 60
         self.engagedThresh = 10
-
-    def loadBehavData(self, filePath):
+    
+    
+    def loadBehavData(self,filePath):
 
         self.behavDataPath = filePath
-
-        d = h5py.File(self.behavDataPath, 'r')
-
+        
+        d = h5py.File(self.behavDataPath,'r')
+        
         # self.subjectName = d['subjectName'][()]
-        self.subjectName = re.search(
-            '.*_([0-9]{6})_', os.path.basename(self.behavDataPath)).group(1)
+        self.subjectName = re.search('.*_([0-9]{6})_',os.path.basename(self.behavDataPath)).group(1)
         self.rigName = d['rigName'].asstr()[()]
-        self.taskVersion = d['taskVersion'].asstr(
-        )[()] if 'taskVersion' in d.keys() else None
+        self.computerName = d['computerName'].asstr()[()] if 'computerName' in d and  d['computerName'].dtype=='O' else None
+        self.taskVersion = d['taskVersion'].asstr()[()] if 'taskVersion' in d else None
         self.startTime = d['startTime'].asstr()[()]
-
+        
         self.frameIntervals = d['frameIntervals'][:]
-        self.frameTimes = np.concatenate(([0], np.cumsum(self.frameIntervals)))
-
+        self.frameTimes = np.concatenate(([0],np.cumsum(self.frameIntervals)))
+        
         self.trialEndFrame = d['trialEndFrame'][:]
         self.trialEndTimes = self.frameTimes[self.trialEndFrame]
         self.nTrials = self.trialEndFrame.size
@@ -55,73 +55,80 @@ class DynRoutData():
         self.trialStartTimes = self.frameTimes[self.trialStartFrame]
         self.stimStartFrame = d['trialStimStartFrame'][:self.nTrials]
         self.stimStartTimes = self.frameTimes[self.stimStartFrame]
-
+        
         self.newBlockAutoRewards = d['newBlockAutoRewards'][()]
         self.newBlockGoTrials = d['newBlockGoTrials'][()]
-        self.newBlockNogoTrials = d['newBlockNogoTrials'][(
-        )] if 'newBlockNogoTrials' in d else 0
-
+        self.newBlockNogoTrials = d['newBlockNogoTrials'][()] if 'newBlockNogoTrials' in d else 0
+        self.newBlockCatchTrials = d['newBlockCatchTrials'][()] if 'newBlockCatchTrials' in d else 0
+        self.autoRewardOnsetFrame = d['autoRewardOnsetFrame'][()]
+        
         self.trialRepeat = d['trialRepeat'][:self.nTrials]
         self.incorrectTrialRepeats = d['incorrectTrialRepeats'][()]
         self.incorrectTimeoutFrames = d['incorrectTimeoutFrames'][()]
-
+        
         self.quiescentFrames = d['quiescentFrames'][()]
-        self.quiescentViolationFrames = d['quiescentViolationFrames'][:] if 'quiescentViolationFrames' in d.keys(
-        ) else d['quiescentMoveFrames'][:]
-
+        self.quiescentViolationFrames = d['quiescentViolationFrames'][:] if 'quiescentViolationFrames' in d.keys() else d['quiescentMoveFrames'][:]    
+        
         self.responseWindow = d['responseWindow'][:]
         self.responseWindowTime = np.array(self.responseWindow)/self.frameRate
-
+        
         self.trialStim = d['trialStim'].asstr()[:self.nTrials]
         self.trialBlock = d['trialBlock'][:self.nTrials]
-        self.blockStartTimes = self.trialStartTimes[[
-            np.where(self.trialBlock == i)[0][0] for i in np.unique(self.trialBlock)]]
-        self.blockFirstStimTimes = self.stimStartTimes[[
-            np.where(self.trialBlock == i)[0][0] for i in np.unique(self.trialBlock)]]
+        self.blockTrial = np.concatenate([np.arange(np.sum(self.trialBlock==i)) for i in np.unique(self.trialBlock)])
+        self.blockStartTimes = self.trialStartTimes[[np.where(self.trialBlock==i)[0][0] for i in np.unique(self.trialBlock)]]
+        self.blockFirstStimTimes = self.stimStartTimes[[np.where(self.trialBlock==i)[0][0] for i in np.unique(self.trialBlock)]]
         self.blockStimRewarded = d['blockStimRewarded'].asstr()[:]
         self.rewardedStim = self.blockStimRewarded[self.trialBlock-1]
-
+        
+        self.rewardFrames = d['rewardFrames'][:]
+        self.rewardTimes = self.frameTimes[self.rewardFrames]
+        self.rewardSize = d['rewardSize'][:]
         self.trialResponse = d['trialResponse'][:self.nTrials]
         self.trialResponseFrame = d['trialResponseFrame'][:self.nTrials]
         self.trialRewarded = d['trialRewarded'][:self.nTrials]
-        self.autoRewarded = d['trialAutoRewarded'][:self.nTrials]
+        
+        if 'trialAutoRewardScheduled' in d:
+            self.autoRewardScheduled = d['trialAutoRewardScheduled'][:self.nTrials]
+            self.autoRewarded = d['trialAutoRewarded'][:self.nTrials]
+            if len(self.autoRewardScheduled) < self.nTrials:
+                self.autoRewardScheduled = np.zeros(self.nTrials,dtype=bool)
+                self.autoRewardScheduled[self.blockTrial < self.newBlockAutoRewards] = True
+            if len(self.autoRewarded) < self.nTrials:
+                self.autoRewarded = self.autoRewardScheduled & np.in1d(self.stimStartFrame+self.autoRewardOnsetFrame,self.rewardFrames)
+        else:
+            self.autoRewardScheduled = d['trialAutoRewarded'][:self.nTrials]
+            self.autoRewarded = self.autoRewardScheduled & np.in1d(self.stimStartFrame+self.autoRewardOnsetFrame,self.rewardFrames)
         self.rewardEarned = self.trialRewarded & (~self.autoRewarded)
-        self.rewardFrames = d['rewardFrames'][:]
-        self.rewardTimes = self.frameTimes[self.rewardFrames]
-
-        self.responseTimes = np.full(self.nTrials, np.nan)
-        self.responseTimes[self.trialResponse] = self.frameTimes[self.trialResponseFrame[self.trialResponse].astype(
-            int)] - self.stimStartTimes[self.trialResponse]
-
+        
+        
+        self.responseTimes = np.full(self.nTrials,np.nan)
+        self.responseTimes[self.trialResponse] = self.frameTimes[self.trialResponseFrame[self.trialResponse].astype(int)] - self.stimStartTimes[self.trialResponse]
+        
         self.lickFrames = d['lickFrames'][:]
         if len(self.lickFrames) > 0:
             lickTimesDetected = self.frameTimes[self.lickFrames]
             self.minLickInterval = 0.05
-            isLick = np.concatenate(
-                ([True], np.diff(lickTimesDetected) > self.minLickInterval))
+            isLick = np.concatenate(([True], np.diff(lickTimesDetected) > self.minLickInterval))
             self.lickTimes = lickTimesDetected[isLick]
         else:
             self.lickTimes = np.array([])
-
-        if 'rotaryEncoder' in d and isinstance(d['rotaryEncoder'][()], bytes) and d['rotaryEncoder'].asstr()[()] == 'digital':
-            self.runningSpeed = np.concatenate(([np.nan], np.diff(
-                d['rotaryEncoderCount'][:]) / d['rotaryEncoderCountsPerRev'][()] * 2 * np.pi * d['wheelRadius'][()] * self.frameRate))
+        
+        if 'rotaryEncoder' in d and isinstance(d['rotaryEncoder'][()],bytes) and d['rotaryEncoder'].asstr()[()] == 'digital':
+            self.runningSpeed = np.concatenate(([np.nan],np.diff(d['rotaryEncoderCount'][:]) / d['rotaryEncoderCountsPerRev'][()] * 2 * np.pi * d['wheelRadius'][()] * self.frameRate))
         else:
             self.runningSpeed = None
-
+        
         self.visContrast = d['visStimContrast'][()]
         self.trialVisContrast = d['trialVisStimContrast'][:self.nTrials]
         if 'gratingOri' in d:
-            self.gratingOri = {key: d['gratingOri']
-                               [key][()] for key in d['gratingOri']}
+            self.gratingOri = {key: d['gratingOri'][key][()] for key in d['gratingOri']}
         else:
-            self.gratingOri = {key: d['gratingOri_'+key][()]
-                               for key in ('vis1', 'vis2')}
+            self.gratingOri = {key: d['gratingOri_'+key][()] for key in ('vis1','vis2')}
         self.trialGratingOri = d['trialGratingOri'][:self.nTrials]
-
+        
         self.soundVolume = d['soundVolume'][()]
         self.trialSoundVolume = d['trialSoundVolume'][:self.nTrials]
-
+        
         if 'optoVoltage' in d:
             self.optoVoltage = d['optoVoltage'][()]
             self.galvoVoltage = d['galvoVoltage'][()]
@@ -129,41 +136,35 @@ class DynRoutData():
             self.trialOptoDur = d['trialOptoDur'][:self.nTrials]
             self.trialOptoVoltage = d['trialOptoVoltage'][:self.nTrials]
             self.trialGalvoVoltage = d['trialGalvoVoltage'][:self.nTrials]
-        if 'optoRegions' in d:
+        if 'optoRegions' in d and len(d['optoRegions']) > 0:
             self.optoRegions = d['optoRegions'].asstr()[()]
-
+            
         d.close()
-
+        
         self.catchTrials = self.trialStim == 'catch'
-        self.multimodalTrials = np.array(
-            ['+' in stim for stim in self.trialStim])
-        self.goTrials = (self.trialStim == self.rewardedStim) & (
-            ~self.autoRewarded)
-        self.nogoTrials = (self.trialStim != self.rewardedStim) & (
-            ~self.catchTrials) & (~self.multimodalTrials)
-        self.sameModalNogoTrials = self.nogoTrials & np.array(
-            [stim[:-1] == rew[:-1] for stim, rew in zip(self.trialStim, self.rewardedStim)])
+        self.multimodalTrials = np.array(['+' in stim for stim in self.trialStim])
+        self.goTrials = (self.trialStim == self.rewardedStim) & (~self.autoRewardScheduled)
+        self.nogoTrials = (self.trialStim != self.rewardedStim) & (~self.catchTrials) & (~self.multimodalTrials)
+        self.sameModalNogoTrials = self.nogoTrials & np.array([stim[:-1]==rew[:-1] for stim,rew in zip(self.trialStim,self.rewardedStim)])
         if 'distract' in self.taskVersion:
-            self.otherModalGoTrials = self.nogoTrials & np.in1d(
-                self.trialStim, ('vis1', 'sound1'))
+            self.otherModalGoTrials = self.nogoTrials & np.in1d(self.trialStim,('vis1','sound1'))
         else:
-            self.otherModalGoTrials = self.nogoTrials & np.in1d(
-                self.trialStim, self.blockStimRewarded)
+            self.otherModalGoTrials = self.nogoTrials & np.in1d(self.trialStim,self.blockStimRewarded)
         self.otherModalNogoTrials = self.nogoTrials & ~self.sameModalNogoTrials & ~self.otherModalGoTrials
-
+        
         self.hitTrials = self.goTrials & self.trialResponse
         self.missTrials = self.goTrials & (~self.trialResponse)
-        self.falseAlarmTrials = self. nogoTrials & self.trialResponse
+        self.falseAlarmTrials =self. nogoTrials & self.trialResponse
         self.correctRejectTrials = self.nogoTrials & (~self.trialResponse)
         self.catchResponseTrials = self.catchTrials & self.trialResponse
-
-        self.engagedTrials = np.ones(self.nTrials, dtype=bool)
+        
+        self.engagedTrials = np.ones(self.nTrials,dtype=bool)
         for i in range(self.nTrials):
             r = self.trialResponse[:i+1][self.goTrials[:i+1]]
             if r.size > self.engagedThresh:
                 if r[-self.engagedThresh:].sum() < 1:
                     self.engagedTrials[i] = False
-
+        
         self.catchResponseRate = []
         self.hitRate = []
         self.hitCount = []
@@ -174,31 +175,21 @@ class DynRoutData():
         self.dprimeSameModal = []
         self.dprimeOtherModalGo = []
         self.dprimeNonrewardedModal = []
-        for blockInd, rew in enumerate(self.blockStimRewarded):
-            blockTrials = (self.trialBlock == blockInd +
-                           1) & self.engagedTrials & (~self.trialRepeat)
-            self.catchResponseRate.append(
-                self.catchResponseTrials[blockTrials].sum() / self.catchTrials[blockTrials].sum())
-            self.hitRate.append(
-                self.hitTrials[blockTrials].sum() / self.goTrials[blockTrials].sum())
+        for blockInd,rew in enumerate(self.blockStimRewarded):
+            blockTrials = (self.trialBlock == blockInd + 1) & self.engagedTrials & (~self.trialRepeat)
+            self.catchResponseRate.append(self.catchResponseTrials[blockTrials].sum() / self.catchTrials[blockTrials].sum())
+            self.hitRate.append(self.hitTrials[blockTrials].sum() / self.goTrials[blockTrials].sum())
             self.hitCount.append(self.hitTrials[blockTrials].sum())
-            self.falseAlarmRate.append(
-                self.falseAlarmTrials[blockTrials].sum() / self.nogoTrials[blockTrials].sum())
+            self.falseAlarmRate.append(self.falseAlarmTrials[blockTrials].sum() / self.nogoTrials[blockTrials].sum())
             sameModal = blockTrials & self.sameModalNogoTrials
             otherModalGo = blockTrials & self.otherModalGoTrials
             otherModalNogo = blockTrials & self.otherModalNogoTrials
-            self.falseAlarmSameModal.append(
-                self.falseAlarmTrials[sameModal].sum() / sameModal.sum())
-            self.falseAlarmOtherModalGo.append(
-                self.falseAlarmTrials[otherModalGo].sum() / otherModalGo.sum())
-            self.falseAlarmOtherModalNogo.append(
-                self.falseAlarmTrials[otherModalNogo].sum() / otherModalNogo.sum())
-            self.dprimeSameModal.append(calcDprime(
-                self.hitRate[-1], self.falseAlarmSameModal[-1], self.goTrials[blockTrials].sum(), sameModal.sum()))
-            self.dprimeOtherModalGo.append(calcDprime(
-                self.hitRate[-1], self.falseAlarmOtherModalGo[-1], self.goTrials[blockTrials].sum(), otherModalGo.sum()))
-            self.dprimeNonrewardedModal.append(calcDprime(
-                self.falseAlarmOtherModalGo[-1], self.falseAlarmOtherModalNogo[-1], otherModalGo.sum(), otherModalNogo.sum()))
+            self.falseAlarmSameModal.append(self.falseAlarmTrials[sameModal].sum() / sameModal.sum())
+            self.falseAlarmOtherModalGo.append(self.falseAlarmTrials[otherModalGo].sum() / otherModalGo.sum())
+            self.falseAlarmOtherModalNogo.append(self.falseAlarmTrials[otherModalNogo].sum() / otherModalNogo.sum())
+            self.dprimeSameModal.append(calcDprime(self.hitRate[-1],self.falseAlarmSameModal[-1],self.goTrials[blockTrials].sum(),sameModal.sum()))
+            self.dprimeOtherModalGo.append(calcDprime(self.hitRate[-1],self.falseAlarmOtherModalGo[-1],self.goTrials[blockTrials].sum(),otherModalGo.sum()))
+            self.dprimeNonrewardedModal.append(calcDprime(self.falseAlarmOtherModalGo[-1],self.falseAlarmOtherModalNogo[-1],otherModalGo.sum(),otherModalNogo.sum()))
 
 
 def generate_lick_raster_all_trials(behavior_filepath: str):
