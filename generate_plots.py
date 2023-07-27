@@ -435,9 +435,9 @@ def generate_running_speed_binned(behavior_filepath: str, bin_size = 6):
     for i in range(0, obj.frameTimes.size, bin_size):
         binned_frame_times.append(obj.frameTimes[i])
         binned_running_speed.append(obj.runningSpeed[i:bin_size].mean())
-    # binned_frame_times = np.arange(0, obj.frameTimes[-1], 1)
-    # binned_running_speed = np.zeros(binned_frame_times.size)
-
+    
+    print(binned_frame_times)
+    print(binned_running_speed)
     ax.plot(binned_frame_times, binned_running_speed, 'k')
     for side in ('right', 'top'):
         ax.spines[side].set_visible(False)
