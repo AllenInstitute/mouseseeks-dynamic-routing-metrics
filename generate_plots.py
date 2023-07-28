@@ -422,7 +422,7 @@ def generate_running_speed(behavior_filepath: str):
     return fig
 
 
-def generate_running_speed_binned(behavior_filepath: str, bin_size = 40):
+def generate_running_speed_binned(behavior_filepath: str, bin_size = 60):
     obj = DynRoutData()
     obj.loadBehavData(behavior_filepath)
     if obj.runningSpeed is None:
@@ -461,6 +461,7 @@ def generate_cumulative_volume(behavior_filepath: str):
     print(obj.rewardSize)
     print(obj.rewardSize.size)
     cum_vol = list(np.cumsum(obj.rewardSize))
+    print(cum_vol)
     cum_vol_inter_trial = []
     prev_cum_vol = 0
     for trial in trials:
