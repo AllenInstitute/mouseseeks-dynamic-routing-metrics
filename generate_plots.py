@@ -458,6 +458,8 @@ def generate_cumulative_volume(behavior_filepath: str):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     trials = np.arange(obj.nTrials)
+    print(obj.rewardSize)
+    print(obj.rewardSize.size)
     cum_vol = list(np.cumsum(obj.rewardSize))
     cum_vol_inter_trial = []
     prev_cum_vol = 0
