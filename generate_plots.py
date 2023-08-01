@@ -463,7 +463,7 @@ def generate_cumulative_volume(behavior_filepath: str):
     prev_cum_vol = 0
     for trial in trials:
         if obj.trialRewarded[trial]:
-            prev_cum_vol = cum_vol.pop(0)
+            prev_cum_vol += 1
         cum_vol_inter_trial.append(prev_cum_vol)
     
     ax.plot(trials, cum_vol_inter_trial)
