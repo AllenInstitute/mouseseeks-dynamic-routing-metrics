@@ -476,26 +476,26 @@ def generate_cumulative_volume(behavior_filepath: str):
     return fig
 
 
-def generate_cumulative_volume_2(behavior_filepath: str):
+def generate_cumulative_reward_count(behavior_filepath: str):
     obj = DynRoutData()
     obj.loadBehavData(behavior_filepath)
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     trials = np.arange(obj.nTrials)
-    cum_vol = list(np.cumsum(obj.rewardSize))
-    cum_vol_inter_trial = []
-    prev_cum_vol = 0
+    reward_count = list(np.cumsum(obj.rewardSize))
+    reward_count_trialwise = []
+    prev_reward_count = 0
     for trial in trials:
         if obj.trialRewarded[trial]:
-            prev_cum_vol = cum_vol.pop(0)
-        cum_vol_inter_trial.append(prev_cum_vol)
+            prev_reward_count = reward_count.pop(0)
+        reward_count_trialwise.append(prev_reward_count)
     
-    ax.plot(trials, cum_vol_inter_trial)
+    ax.plot(trials, reward_count_trialwise)
     ax.tick_params(direction='out', top=False, right=False)
     ax.set_ylim([0, 5.0])
     ax.set_xlabel('trials')
-    ax.set_ylabel('cumulative volume (mL)')
+    ax.set_ylabel('cumulative reward count')
     ax.legend()
     plt.tight_layout()
     return fig
@@ -541,7 +541,7 @@ if __name__ == "__main__":
     # cumulative volume
     cumulative_volume = generate_cumulative_volume(args.behavior_filepath)
 
-    # cumulative volume v2
-    cumulative_volume = generate_cumulative_volume_2(args.behavior_filepath)
+    # cumulative rewards
+    cumulative_rewards = generate_cumulative_reward_count(args.behavior_filepath)
 
     plt.show(block=True)
