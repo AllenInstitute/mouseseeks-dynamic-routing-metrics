@@ -463,7 +463,7 @@ def generate_cumulative_volume(behavior_filepath: str):
     prev_cum_vol = 0
     for trial in trials:
         if obj.trialRewarded[trial]:
-            prev_cum_vol += 1
+            prev_cum_vol = cum_vol.pop(0)
         cum_vol_inter_trial.append(prev_cum_vol)
     
     ax.plot(trials, cum_vol_inter_trial)
@@ -483,17 +483,15 @@ def generate_cumulative_reward_count(behavior_filepath: str):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     trials = np.arange(obj.nTrials)
-    reward_count = list(np.cumsum(obj.rewardSize))
     reward_count_trialwise = []
     prev_reward_count = 0
     for trial in trials:
         if obj.trialRewarded[trial]:
-            prev_reward_count = reward_count.pop(0)
+            prev_reward_count += 1
         reward_count_trialwise.append(prev_reward_count)
     
     ax.plot(trials, reward_count_trialwise)
     ax.tick_params(direction='out', top=False, right=False)
-    ax.set_ylim([0, 5.0])
     ax.set_xlabel('trials')
     ax.set_ylabel('cumulative reward count')
     ax.legend()
