@@ -492,6 +492,7 @@ def generate_cumulative_reward_count(behavior_filepath: str):
     
     ax.plot(trials, reward_count_trialwise)
     ax.tick_params(direction='out', top=False, right=False)
+    ax.set_ylim([0, 300.0])
     ax.set_xlabel('trials')
     ax.set_ylabel('cumulative reward count')
     ax.legend()
